@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:geo_silent/home_page.dart';
+import 'package:geo_silent/page/homepage.dart';
 
 void main() {
   runApp(const MyApp());

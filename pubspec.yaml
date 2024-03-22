@@ -13,6 +13,10 @@ dependencies:
   sound_mode: ^3.0.0
   flutter_svg: ^2.0.9
   permission_handler: ^10.2.0
+  google_maps_flutter: ^2.2.0
+  geolocator: ^11.0.0
+  collection: ^1.18.0
+  sqflite: ^2.0.2
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +26,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/permission_denied.png
     - assets/images/permission_denied.svg
+    - assets/images/location_markers.svg
+    - assets/images/location_markers.bmp
  
