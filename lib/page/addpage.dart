@@ -10,11 +10,11 @@ class AddPage extends StatefulWidget {
   const AddPage({
     super.key,
     required this.currentLocation,
-    required this.loadData,
+    required this.getPlaceList,
   });
 
   final Position currentLocation;
-  final Function loadData;
+  final Function getPlaceList;
 
   @override
   _AddPage createState() => _AddPage();
@@ -79,7 +79,7 @@ class _AddPage extends State<AddPage> {
           .join('|'),
     );
     dbManager.insertPlace(newPlace);
-    widget.loadData();
+    widget.getPlaceList();
   }
 
   @override

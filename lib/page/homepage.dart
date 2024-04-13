@@ -1,9 +1,9 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:geo_silent/constant/modal.dart';
 import 'package:geo_silent/page/addpage.dart';
 import 'package:geo_silent/page/loadingpage.dart';
 import 'package:geo_silent/page/nopermissionpage.dart';
+import 'package:geo_silent/page/welcomepage.dart';
 import 'package:geo_silent/service/db.dart';
 import 'package:geo_silent/service/location.dart';
 import 'package:geo_silent/service/permission.dart';
@@ -12,6 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sound_mode/utils/ringer_mode_statuses.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -22,10 +23,39 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   RingerModeStatus _soundMode = RingerModeStatus.unknown;
-  bool? _permissionStatus;
+  bool loading = true;
+  bool _permissionStatus = false;
+  bool _showWelcome = false;
   Position? _currentLocation;
   List<Place> _placeList = [];
   Set<Polygon> _polygon = {};
+
+  Future<bool> updatePermissionStatus() async {
+    List<PermissionStatus> permissionStatus = await getPermissionStatus();
+    bool status =
+        permissionStatus[0].isGranted && permissionStatus[1].isGranted;
+
+    await checkWelcomeStatus();
+    if (status) {
+      await updateSoundStatus();
+      await getLocation();
+      await getPlaceList();
+    }
+    setState(() {
+      _permissionStatus = status;
+      loading = false;
+    });
+    return status;
+  }
+
+  Future<bool> checkWelcomeStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool showWelcome = prefs.getBool('seenWelcome') ?? false;
+    setState(() {
+      _showWelcome = !showWelcome;
+    });
+    return showWelcome;
+  }
 
   Future<void> updateSoundStatus() async {
     RingerModeStatus soundModeStatus = await getCurrentSoundProfile();
@@ -34,26 +64,49 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Future<bool> updatePermissionStatus() async {
-    List<PermissionStatus> permissionStatus = await getPermissionStatus();
-    bool status =
-        permissionStatus[0].isGranted && permissionStatus[1].isGranted;
+  Future<bool> getLocation() async {
+    Position position = await getCurrentLocation();
     setState(() {
-      _permissionStatus = status;
+      _currentLocation = position;
     });
-    updateSoundStatus();
-    loadData();
-    return status;
+    return true;
   }
 
-  void setSoundMode(type) {
-    setSoundProfile(type);
-    updateSoundStatus();
+  Future<List<Place>> getPlaceList() async {
+    DbManager db = DbManager();
+    List<Place> placeList = await db.getPlaceList();
+    Set<Polygon> polygonSet = {};
+    for (var i = 0; i < placeList.length; i++) {
+      List<LatLng> pointsList =
+          placeList[i].points.split('|').map((String str) {
+        List<String> point = str.split(',');
+        return LatLng(double.parse(point[0]), double.parse(point[1]));
+      }).toList();
+      polygonSet.add(Polygon(
+        polygonId: PolygonId(placeList[i].name),
+        geodesic: true,
+        points: pointsList,
+        strokeColor: Colors.teal,
+        strokeWidth: 2,
+        fillColor: const Color.fromARGB(255, 127, 172, 167).withOpacity(0.1),
+      ));
+    }
+    setState(() {
+      _polygon = polygonSet;
+      _placeList = placeList;
+    });
+    return placeList;
+  }
+
+  void getStarted() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seenWelcome', true);
+    getPermission();
   }
 
   void getPermission() async {
     setState(() {
-      _permissionStatus = null;
+      loading = true;
     });
     List<PermissionStatus> permissionStatus = [
       PermissionStatus.denied,
@@ -64,12 +117,9 @@ class _MyHomePageState extends State<MyHomePage> {
     updatePermissionStatus();
   }
 
-  void loadData() async {
-    Position position = await getCurrentLocation();
-    setState(() {
-      _currentLocation = position;
-    });
-    getPlaceList();
+  void setSoundMode(type) {
+    setSoundProfile(type);
+    updateSoundStatus();
   }
 
   void deletePlace(id) async {
@@ -78,57 +128,22 @@ class _MyHomePageState extends State<MyHomePage> {
     getPlaceList();
   }
 
-  void updatePolygon() {
-    Set<Polygon> polygonSet = {};
-    for (var i = 0; i < _placeList.length; i++) {
-      List<LatLng> pointsList =
-          _placeList[i].points.split('|').map((String str) {
-        List<String> point = str.split(',');
-        return LatLng(double.parse(point[0]), double.parse(point[1]));
-      }).toList();
-      polygonSet.add(Polygon(
-        polygonId: PolygonId(_placeList[i].name),
-        geodesic: true,
-        points: pointsList,
-        strokeColor: Colors.teal,
-        strokeWidth: 2,
-        fillColor: Colors.teal.withOpacity(0.1),
-      ));
-    }
-    setState(() {
-      _polygon = polygonSet;
-    });
-  }
-
-  void getPlaceList() async {
-    DbManager db = DbManager();
-    List<Place> placeList = await db.getPlaceList();
-    setState(() {
-      _placeList = placeList;
-    });
-    updatePolygon();
-  }
-
   @override
   void initState() {
     super.initState();
-    updatePermissionStatus().then((status) {
-      if (!status) {
-        getPermission();
-      }
-    });
+    updatePermissionStatus();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_permissionStatus == null) {
+    if (loading) {
       return const LoadingPage();
     }
-    if (!_permissionStatus!) {
+    if (_showWelcome) {
+      return WelcomePage(getStarted: getStarted);
+    }
+    if (!_permissionStatus) {
       return NoPermissionPage(getPermission: getPermission);
-    }
-    if (_currentLocation == null) {
-      return const LoadingPage();
     }
     return Scaffold(
       body: Stack(
@@ -218,7 +233,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       builder: (context) {
                                         return AddPage(
                                           currentLocation: _currentLocation!,
-                                          loadData: loadData,
+                                          getPlaceList: getPlaceList,
                                         );
                                       },
                                     ),

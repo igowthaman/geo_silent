@@ -27,7 +27,19 @@ class NoPermissionPage extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 )),
-            TextButton(onPressed: getPermission, child: const Text('Continue'))
+            TextButton(
+                onPressed: () => {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          content: Text("127168762"),
+                          duration: Duration(seconds: 2),
+                          backgroundColor: Colors.teal,
+                          margin: EdgeInsets.all(10),
+                        ),
+                      )
+                    },
+                child: const Text('Continue'))
           ],
         ),
       ),

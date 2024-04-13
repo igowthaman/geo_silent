@@ -17,6 +17,7 @@ dependencies:
   geolocator: ^11.0.0
   collection: ^1.18.0
   sqflite: ^2.0.2
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
@@ -27,6 +28,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/permission_denied.svg
-    - assets/images/location_markers.svg
+    - assets/images/welcome.svg
     - assets/images/location_markers.bmp
  
