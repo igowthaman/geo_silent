@@ -103,6 +103,48 @@ class _AddPage extends State<AddPage> {
               },
             ),
           ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.black,
+                  size: 28,
+                  weight: 900,
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Info'),
+                        content: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '=> Tag on the map to start adding the marker which forms the polygon',
+                            ),
+                            Text(
+                              '=> Add minimum three markers to save the place ',
+                            ),
+                          ],
+                        ),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
         floatingActionButton: Builder(builder: (context) {
@@ -127,13 +169,13 @@ class _AddPage extends State<AddPage> {
               );
             },
             style: ButtonStyle(
-              backgroundColor: MaterialStateProperty.all<Color>(Colors.white),
+              backgroundColor: MaterialStateProperty.all<Color>(Colors.teal),
             ),
             child: const Text(
               'Save',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.black,
+                color: Colors.white,
                 fontFamily: 'Quicksand',
               ),
             ),

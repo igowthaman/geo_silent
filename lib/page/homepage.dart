@@ -363,18 +363,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                         title: Text(place.name),
                                         subtitle: Row(
                                           children: [
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                right: 4.0,
-                                              ),
-                                              child: Text(
-                                                '${daysString.join(', ')}  | ',
-                                              ),
-                                            ),
                                             Icon(
                                               icon,
                                               size: 18,
-                                            )
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                left: 4.0,
+                                              ),
+                                              child: Text(
+                                                ' |  ${daysString.join(', ')}',
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         trailing: IconButton(
