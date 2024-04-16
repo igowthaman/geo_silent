@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geo_silent/constant/modal.dart';
 import 'package:geo_silent/page/addpage.dart';
@@ -29,6 +30,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Position? _currentLocation;
   List<Place> _placeList = [];
   Set<Polygon> _polygon = {};
+  bool _actionStatus = false;
+  RingerModeStatus _previousSoundMode = RingerModeStatus.unknown;
 
   Future<bool> updatePermissionStatus() async {
     List<PermissionStatus> permissionStatus = await getPermissionStatus();
@@ -128,10 +131,86 @@ class _MyHomePageState extends State<MyHomePage> {
     getPlaceList();
   }
 
+  bool pointInPolygon(List<LatLng> polygon, Position point) {
+    double x = point.latitude, y = point.longitude;
+    int n = polygon.length;
+    bool inside = false;
+    double p1x, p1y, p2x, p2y;
+    p1x = polygon[0].latitude;
+    p1y = polygon[0].longitude;
+    for (int i = 0; i <= n; i++) {
+      p2x = polygon[i % n].latitude;
+      p2y = polygon[i % n].longitude;
+      if (y > (p1y < p2y ? p1y : p2y)) {
+        if (y <= (p1y > p2y ? p1y : p2y)) {
+          if (x <= (p1x > p2x ? p1x : p2x)) {
+            if (p1y != p2y) {
+              double xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x;
+              if (p1x == p2x || x <= xinters) {
+                inside = !inside;
+              }
+            }
+          }
+        }
+      }
+      p1x = p2x;
+      p1y = p2y;
+    }
+    return inside;
+  }
+
+  void checkForAction() async {
+    DbManager db = DbManager();
+    List<Place> placeList = await db.getPlaceList();
+    Position position = await getCurrentLocation();
+    bool checkForOff = true;
+    for (var i = 0; i < placeList.length; i++) {
+      List<LatLng> pointsList = placeList[i].points.split('|').map(
+        (String str) {
+          List<String> point = str.split(',');
+          return LatLng(double.parse(point[0]), double.parse(point[1]));
+        },
+      ).toList();
+
+      List<int> daysId = placeList[i].days.split(',').map(
+        (String str) {
+          if (str == '0') return 7;
+          return int.parse(str);
+        },
+      ).toList();
+      DateTime now = DateTime.now();
+      int dayOfWeek = now.weekday;
+
+      if (pointInPolygon(pointsList, position) && daysId.contains(dayOfWeek)) {
+        if (!_actionStatus) {
+          RingerModeStatus soundModeStatus = await getCurrentSoundProfile();
+          setState(() {
+            _actionStatus = true;
+            _previousSoundMode = _soundMode;
+          });
+          setSoundMode(placeList[i].mode);
+          return;
+        }
+        checkForOff = false;
+      }
+    }
+
+    if (checkForOff && _actionStatus) {
+      setSoundMode(soundProfileToInt(_previousSoundMode));
+      setState(() {
+        _actionStatus = false;
+        _previousSoundMode = RingerModeStatus.unknown;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     updatePermissionStatus();
+    Timer.periodic(const Duration(seconds: 3), (timer) {
+      checkForAction();
+    });
   }
 
   @override
@@ -275,11 +354,29 @@ class _MyHomePageState extends State<MyHomePage> {
                                         .map((e) => daysIdToString[e])
                                         .toList();
 
+                                    IconData icon = place.mode == 1
+                                        ? Icons.volume_off
+                                        : Icons.vibration;
                                     return Card(
                                       child: ListTile(
                                         leading: const Icon(Icons.place_sharp),
                                         title: Text(place.name),
-                                        subtitle: Text(daysString.join(',')),
+                                        subtitle: Row(
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 4.0,
+                                              ),
+                                              child: Text(
+                                                '${daysString.join(', ')}  | ',
+                                              ),
+                                            ),
+                                            Icon(
+                                              icon,
+                                              size: 18,
+                                            )
+                                          ],
+                                        ),
                                         trailing: IconButton(
                                           onPressed: () {
                                             deletePlace(place.id);

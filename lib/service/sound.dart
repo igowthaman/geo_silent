@@ -67,3 +67,9 @@ void setSoundProfile(type) async {
     print('Do Not Disturb access permissions required!');
   }
 }
+
+int soundProfileToInt(profile) {
+  if (profile == RingerModeStatus.silent) return 1;
+  if (profile == RingerModeStatus.vibrate) return 2;
+  return 0;
+}
